@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>総量規制 計算ツール｜年収の3分の1まで、あといくら借りられる？（貸金業法）</title>
+<meta name="description" content="年収とほかの借入の残高を入れるだけで、貸金業法の総量規制（年収の3分の1）にもとづいて、消費者金融などからあといくら借りられるかの上限の目安を計算。総量規制の対象・対象外の借入や、収入証明書が必要になる金額もわかる無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/soryo/">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>総量規制 計算ツール</h1>
+  <p class="lead">貸金業法の<strong>総量規制</strong>では、消費者金融やクレジットカードのキャッシングなどで借りられる金額は、<strong>年収の3分の1まで</strong>と決められています。年収とほかの借入から、上限まで<strong>あといくら</strong>かを計算します。</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="income">年収（税込み）</label><input type="number" id="income" min="0" value="360"><div class="hint">万円単位。給与・年金・事業の収入など</div></div>
+      <div class="field"><label for="debt">消費者金融・カードのキャッシングの借入残高（合計）</label><input type="number" id="debt" min="0" value="50"><div class="hint">万円単位。すべての会社の合計</div></div>
+    </div>
+    <button id="calc">計算する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>総量規制のよくある質問</h2>
+    <h3>総量規制の対象になる借入は？</h3>
+    <p>消費者金融のカードローン、クレジットカードのキャッシングなど、貸金業者からの個人向けの借入です。銀行のカードローン、住宅ローン、自動車ローン、クレジットカードのショッピング（リボ払いを含む）は対象外です。</p>
+    <h3>収入がない専業主婦は借りられない？</h3>
+    <p>本人に収入がない場合は、総量規制の上限が0円になるため、原則として借りられません。ただし、配偶者の同意書などを出して、夫婦の年収を合わせた3分の1まで借りられる「配偶者貸付」という例外があります。</p>
+    <h3>収入を証明する書類が必要なのは？</h3>
+    <p>1社からの借入が50万円を超える場合、またはほかの会社と合わせた借入が100万円を超える場合は、源泉徴収票などの収入を証明する書類の提出が必要です。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>総量規制は借りられる金額の上限で、実際にいくら借りられるかは各社の審査で決まります。借りすぎには注意し、返済の計画を立ててから利用しましょう。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const income = num("income") * MAN, debt = num("debt") * MAN;
+  if (!income) { out.innerHTML = '<p class="err">年収を入力してください（収入がない場合、総量規制の上限は0円です）。</p>'; return; }
+  const cap = Math.floor(income / 3);
+  const left = Math.max(0, cap - debt);
+  const ratio = debt / income * 100;
+  const yearlyInterest = debt * 0.15;
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat"><div class="k">総量規制の上限（年収の3分の1）</div><div class="v">${man(cap)}</div></div>
+      <div class="stat ${left ? "" : "warn"}"><div class="k">上限まであと</div><div class="v">${left ? man(left) : "上限に達しています"}</div></div>
+      <div class="stat ${ratio > 20 ? "warn" : ""}"><div class="k">年収に対する借入の割合</div><div class="v">${ratio.toFixed(1)}%</div></div>
+    </div>
+    <table class="info">
+      <tr><td>今の借入残高</td><td class="num">${man(debt)}</td></tr>
+      <tr><td>金利15%なら1年間にかかる利息の目安</td><td class="num">${yen(yearlyInterest)}</td></tr>
+    </table>
+    ${debt > cap ? '<p class="note">借入が年収の3分の1を超えているため、消費者金融などで新しく借りることは原則できません。返済が負担になっているなら、おまとめローン（総量規制の例外）や、専門家への相談を考えましょう → <a href="/shakkin/omatome/">おまとめローン 比較</a></p>' : ""}
+    ${ratio > 20 && debt <= cap ? '<p class="note">上限まで余裕があっても、年収に対する借入の割合が大きくなると、利息の負担で返済が苦しくなりやすくなります。借りる前に、返済の計画を立てておきましょう → <a href="/shakkin/">借金返済シミュレーション</a></p>' : ""}
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

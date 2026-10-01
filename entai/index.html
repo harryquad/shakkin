@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>遅延損害金 計算・上限金利チェック｜延滞するといくら？金利は利息制限法の上限を超えていない？</title>
+<meta name="description" content="借入残高・遅延損害金の利率・延滞日数を入れるだけで、返済が遅れた場合の遅延損害金を計算。借入額と金利から、利息制限法の上限金利（20%・18%・15%）と遅延損害金の上限を超えていないかもチェックできる無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/entai/">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>遅延損害金 計算・上限金利チェック</h1>
+  <p class="lead">返済が遅れると、ふつうの利息とは別に<strong>遅延損害金</strong>がかかります。延滞した日数からいくらになるかを計算し、契約の金利が<strong>法律の上限</strong>を超えていないかもチェックします。</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="bal">延滞している借入の残高</label><input type="number" id="bal" min="0" value="500000"><div class="hint">円単位（元金）</div></div>
+      <div class="field"><label for="late">遅延損害金の利率（年）</label><input type="number" id="late" min="0" max="40" step="0.1" value="20"><div class="hint">%。契約書に記載。消費者金融・カード会社は年20%が多い</div></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="days">延滞している日数</label><input type="number" id="days" min="0" max="3650" value="30"></div>
+      <div class="field"><label for="rate">ふだんの金利（年・上限チェック用）</label><input type="number" id="rate" min="0" max="40" step="0.1" value="18"><div class="hint">%</div></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="amount">借りた金額（契約時の元本・上限チェック用）</label><input type="number" id="amount" min="0" value="500000"><div class="hint">円単位</div></div>
+      <div class="field"><label for="lender">借入先</label>
+        <select id="lender"><option value="biz">消費者金融・カード会社・銀行など（業者）</option><option value="person">個人間の貸し借り</option></select></div>
+    </div>
+    <button id="calc">計算する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>遅延損害金のよくある質問</h2>
+    <h3>遅延損害金とは？</h3>
+    <p>返済日に返せなかったときに、遅れた日数に応じてかかる損害金です。「残高 × 遅延損害金の利率 ÷ 365 × 延滞日数」で計算します。ふだんの利息より利率が高いことが多いので、遅れるほど負担が増えます。</p>
+    <h3>金利の上限はいくら？</h3>
+    <p>利息制限法で、元本10万円未満は年20%、10万円以上100万円未満は年18%、100万円以上は年15%が上限です。遅延損害金は、業者からの借入では年20%、個人間の借入では利息の上限の1.46倍（年29.2%・26.28%・21.9%）が上限です。</p>
+    <h3>延滞するとどうなる？</h3>
+    <p>遅延損害金がかかるだけでなく、延滞が長く続く（2〜3か月以上が目安）と信用情報に記録され、ローンやクレジットカードの審査に通りにくくなります。返済が難しいとわかったら、返済日の前に借入先に連絡して相談しましょう。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>遅延損害金は、残高に年利を日割りでかけて計算した目安です（うるう年は考慮していません）。実際の金額は契約内容によって異なります。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const bal = num("bal"), late = num("late") / 100, days = Math.floor(num("days"));
+  const rate = num("rate") / 100, amount = num("amount"), biz = $("lender").value === "biz";
+  if (!bal) { out.innerHTML = '<p class="err">残高を入力してください。</p>'; return; }
+  const fee = Math.floor(bal * late * days / 365);
+  const legal = legalRate(amount || bal);
+  const lateCap = biz ? 0.2 : legal * 1.46;
+  const rateOver = rate > legal, lateOver = late > lateCap + 1e-9;
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat warn"><div class="k">遅延損害金（${days}日分）</div><div class="v">${yen(fee)}</div></div>
+      <div class="stat"><div class="k">1日あたり</div><div class="v">${yen(bal * late / 365)}</div></div>
+      <div class="stat ${rateOver || lateOver ? "warn" : "good"}"><div class="k">金利の上限チェック</div><div class="v">${rateOver || lateOver ? "上限超え" : "上限以内"}</div></div>
+    </div>
+    <table class="info">
+      <tr><td>計算式</td><td class="num">${yen(bal)} × ${(late * 100).toFixed(1)}% ÷ 365 × ${days}日</td></tr>
+      <tr><td>ふだんの金利の上限（元本${amount ? yen(amount) : yen(bal)}）</td><td class="num">年${(legal * 100).toFixed(0)}%（あなたの契約：年${(rate * 100).toFixed(1)}%）${rateOver ? " ⚠" : ""}</td></tr>
+      <tr><td>遅延損害金の上限</td><td class="num">年${(lateCap * 100).toFixed(2).replace(/\.00$/, "")}%（あなたの契約：年${(late * 100).toFixed(1)}%）${lateOver ? " ⚠" : ""}</td></tr>
+    </table>
+    ${rateOver || lateOver ? '<p class="note"><strong>契約の金利が法律の上限を超えています。</strong>上限を超える部分の利息は無効で、払いすぎた分は取り戻せる可能性があります。弁護士・司法書士に相談しましょう。</p>' : ""}
+    <p class="note">返済が遅れそうなときは、まず借入先に連絡しましょう。返済額の見直しに応じてもらえることもあります。複数の借入の返済が重なっているなら → <a href="/shakkin/saimu/">債務整理 シミュレーション</a></p>
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

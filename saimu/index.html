@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>債務整理 シミュレーション｜任意整理・個人再生でいくら減る？毎月の返済額の目安</title>
+<meta name="description" content="借金の総額・金利・毎月返せる額・財産の額を入れるだけで、今のまま返す場合と、任意整理・個人再生・自己破産をした場合の毎月の返済額の目安を比較。個人再生の最低弁済額（民事再生法）にもとづいて計算する無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/saimu/">
+<link rel="stylesheet" href="../assets/style.css">
+<style>tr.ok td:last-child{color:var(--good);font-weight:700}tr.ng td:last-child{color:var(--warn);font-weight:700}</style>
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>債務整理 シミュレーション</h1>
+  <p class="lead">借金の返済が苦しいときに、<strong>今のまま返す場合</strong>と、<strong>任意整理・個人再生・自己破産</strong>をした場合で、毎月の返済額がどれくらい変わるかの<strong>目安</strong>を比べます。実際にどの方法がよいかは、弁護士・司法書士に相談して決めます。</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="debt">借金の総額（住宅ローンを除く）</label><input type="number" id="debt" min="0" value="300"><div class="hint">万円単位</div></div>
+      <div class="field"><label for="rate">借金の平均的な金利（年）</label><input type="number" id="rate" min="0" max="20" step="0.1" value="15"><div class="hint">%</div></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="cap">毎月返済に回せる額</label><input type="number" id="cap" min="0" value="50000"><div class="hint">円単位。手取りから生活費を引いて、無理なく残る額</div></div>
+      <div class="field"><label for="asset">財産の合計（任意）</label><input type="number" id="asset" min="0" value="0"><div class="hint">万円単位。預貯金・車・保険の解約返戻金など</div></div>
+    </div>
+    <button id="calc">比べる</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>債務整理のよくある質問</h2>
+    <h3>任意整理とは？</h3>
+    <p>弁護士・司法書士が借入先と交渉して、これから先の利息をなくしてもらい、元金を3〜5年程度の分割で返していく方法です。裁判所を通さず、整理する借入先を選べるので、車のローンなどを残すこともできます。</p>
+    <h3>個人再生とは？</h3>
+    <p>裁判所に申し立てて、借金を大幅に減らし（法律で決まった最低弁済額まで）、原則3年で返していく方法です。住宅ローンがある家を手放さずに手続きできる場合があります。安定した収入があることなどが条件です。</p>
+    <h3>デメリットは？</h3>
+    <p>どの方法でも、信用情報に事故情報が記録され（いわゆるブラックリスト）、一定期間、新しくローンを組んだりクレジットカードを作ったりしにくくなります。自己破産では、一定以上の財産を手放すことになり、手続き中は一部の仕事に就けない制限もあります。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>任意整理は将来の利息がなくなり元金だけを返す前提、個人再生は民事再生法の最低弁済額（財産の額の方が多い場合はその額）を3年（36回）で返す前提の目安です。実際の結果は、借入の状況・借入先との交渉・裁判所の判断によって異なります。弁護士・司法書士の費用は含めていません。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+// 個人再生の最低弁済額（民事再生法231条）
+function minRepay(d) {
+  if (d < 1000000) return d;
+  if (d <= 5000000) return 1000000;
+  if (d < 15000000) return d / 5;
+  if (d <= 30000000) return 3000000;
+  return d / 10;
+}
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const debt = num("debt") * MAN, rate = num("rate") / 100, cap = num("cap"), asset = num("asset") * MAN;
+  if (!debt) { out.innerHTML = '<p class="err">借金の総額を入力してください。</p>'; return; }
+  const now = cap ? payoff(debt, rate, cap) : { months: Infinity };
+  const nini60 = Math.ceil(debt / 60), nini36 = Math.ceil(debt / 36);
+  const saiseiTotal = Math.max(minRepay(debt), asset);
+  const saisei36 = Math.ceil(saiseiTotal / 36);
+  const saiseiOk = debt <= 50000000;
+  const rows = [
+    { name: "今のまま返す", monthly: cap, total: now.months === Infinity ? null : now.total, note: now.months === Infinity ? "利息が返済額を上回り、完済できません" : `${ym(now.months)}で完済`, ok: now.months !== Infinity && now.months <= 60, label: now.months === Infinity ? "完済できない" : now.months <= 60 ? "返せる見込み" : "完済まで長い" },
+    { name: "任意整理（5年で返す場合）", monthly: nini60, total: debt, note: "将来の利息がなくなり、元金だけを分割で返す", ok: nini60 <= cap, label: nini60 <= cap ? "返せる見込み" : "厳しい" },
+    { name: "個人再生（3年で返す場合）", monthly: saiseiOk ? saisei36 : null, total: saiseiOk ? saiseiTotal : null, note: saiseiOk ? `返す総額は${man(saiseiTotal)}${asset > minRepay(debt) ? "（財産の額が基準）" : "（最低弁済額）"}` : "借金が5,000万円を超えるため対象外", ok: saiseiOk && saisei36 <= cap, label: !saiseiOk ? "対象外" : saisei36 <= cap ? "返せる見込み" : "厳しい" },
+    { name: "自己破産", monthly: 0, total: 0, note: "裁判所に認められれば返済の義務がなくなる（一定以上の財産は手放す）", ok: true, label: "返済なし（条件あり）" },
+  ];
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat"><div class="k">今のまま返した場合の利息</div><div class="v">${now.months === Infinity ? "完済できない" : yen(now.interest)}</div></div>
+      <div class="stat good"><div class="k">任意整理の毎月の返済（5年）</div><div class="v">${yen(nini60)}</div></div>
+      <div class="stat good"><div class="k">個人再生の毎月の返済（3年）</div><div class="v">${saiseiOk ? yen(saisei36) : "対象外"}</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="info">
+      <tr><th>方法</th><th class="num">毎月の返済</th><th class="num">返す総額</th><th class="num">毎月${yen(cap)}で</th></tr>
+      ${rows.map(r => `<tr class="${r.ok ? "ok" : "ng"}"><td>${r.name}<br><small style="color:var(--muted)">${r.note}</small></td><td class="num">${r.monthly === null ? "—" : yen(r.monthly)}</td><td class="num">${r.total === null ? "—" : yen(r.total)}</td><td class="num">${r.label}</td></tr>`).join("")}
+    </table></div>
+    <p class="note">任意整理を3年で返す場合は、毎月${yen(nini36)}です。どの方法が合うかは、借入先の数や種類、家や車を残したいか、収入の安定などによって変わります。<strong>まずは無料相談で、今の状況を専門家に見てもらうのがいちばんの近道です。</strong></p>
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

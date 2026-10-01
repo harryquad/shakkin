@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>リボ払い 手数料・返済期間 計算｜残高から完済まで何か月？手数料の総額は？</title>
+<meta name="description" content="リボ払いの残高・手数料率（年15%など）・毎月の支払額を入れるだけで、完済までの期間と手数料の総額を計算。元金定額・元利定額の両方に対応し、毎月使い続けた場合や、支払額を増やした場合の効果もわかる無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/ribo/">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>リボ払い 手数料・返済期間 計算</h1>
+  <p class="lead">リボ払いは毎月の支払いが一定で楽な反面、<strong>手数料（金利）が高く、残高がなかなか減らない</strong>しくみです。今の残高から、<strong>完済までの期間</strong>と<strong>手数料の総額</strong>を計算します。</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="bal">リボ払いの残高</label><input type="number" id="bal" min="0" value="300000"><div class="hint">円単位</div></div>
+      <div class="field"><label for="rate">手数料率（年）</label><input type="number" id="rate" min="0" max="20" step="0.1" value="15"><div class="hint">%。多くのカードは年15%前後</div></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="type">支払いのしかた</label>
+        <select id="type"><option value="total">元利定額（手数料込みで毎月○円）</option><option value="prin">元金定額（毎月○円＋手数料）</option></select>
+        <div class="hint">カード会社の明細・会員ページで確認できます</div></div>
+      <div class="field"><label for="pay">毎月の支払額</label><input type="number" id="pay" min="0" value="10000"><div class="hint">円単位</div></div>
+    </div>
+    <div class="field"><label for="use">これからも毎月リボ払いで使う額（任意）</label><input type="number" id="use" min="0" value="0"><div class="hint">円単位。使い続けると残高が減りにくくなります</div></div>
+    <button id="calc">計算する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>リボ払いのよくある質問</h2>
+    <h3>リボ払いの手数料はなぜ高い？</h3>
+    <p>手数料率が年15%前後と、銀行のローンなどに比べて高いうえ、毎月の支払額が少ないため返済期間が長くなり、手数料を払う期間も長くなるからです。毎月の支払いの大半が手数料になっていることも珍しくありません。</p>
+    <h3>リボ払いを早く終わらせるには？</h3>
+    <p>カード会社の会員ページから、支払額を増やす（増額）か、まとめて返す（繰上げ返済）ことができます。また、これ以上リボ払いで使わない、自動リボの設定を解除することも大切です。</p>
+    <h3>元利定額と元金定額の違いは？</h3>
+    <p>元利定額は手数料込みで毎月の支払額が一定、元金定額は毎月決まった元金に、その月の手数料を足して払う方法です。同じ金額なら、元金定額の方が元金が早く減ります。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>手数料を「残高 × 年率 ÷ 12」として毎月計算した目安です。実際の手数料は日割りで計算されるため、少し変わります。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function sim(bal, rate, pay, type, use) {
+  const r = rate / 12;
+  let months = 0, fee = 0, paid = 0;
+  while (bal > 0.5 && months < 600) {
+    const f = bal * r;
+    const prin = type === "total" ? pay - f : pay;
+    if (prin <= use) return { months: Infinity };
+    const p = Math.min(prin, bal);
+    fee += f; paid += p + f;
+    bal = bal - p + use;
+    months++;
+  }
+  return { months, fee, paid };
+}
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const bal = num("bal"), rate = num("rate") / 100, pay = num("pay"), type = $("type").value, use = num("use");
+  if (!bal || !pay) { out.innerHTML = '<p class="err">残高と毎月の支払額を入力してください。</p>'; return; }
+  const s = sim(bal, rate, pay, type, use);
+  if (s.months === Infinity || s.months >= 600) {
+    out.innerHTML = `<p class="err">この支払額${use ? "と利用額" : ""}では、リボ払いの残高が減りません（毎月の手数料${use ? "と新しい利用" : ""}が、元金の返済を上回っています）。支払額を増やすか、リボ払いでの利用をやめる必要があります。</p>${HELP}`;
+    return;
+  }
+  const up = sim(bal, rate, pay + 10000, type, use);
+  const firstFee = bal * rate / 12;
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat"><div class="k">完済までの期間</div><div class="v">${ym(s.months)}</div></div>
+      <div class="stat warn"><div class="k">手数料の総額</div><div class="v">${yen(s.fee)}</div></div>
+      <div class="stat"><div class="k">支払いの総額</div><div class="v">${yen(s.paid)}</div></div>
+    </div>
+    <table class="info">
+      <tr><td>1回目の支払いのうち手数料</td><td class="num">${yen(firstFee)}（${type === "total" ? `支払額の${Math.round(firstFee / pay * 100)}%` : `元金${yen(pay)}に上乗せ`}）</td></tr>
+      ${use ? `<tr><td>期間中に新たに使う額の合計</td><td class="num">${yen(use * s.months)}</td></tr>` : ""}
+      <tr><td>毎月の支払額を1万円増やすと</td><td class="num">${ym(up.months)}で完済・手数料 ${yen(up.fee)}（${yen(s.fee - up.fee)}減）</td></tr>
+    </table>
+    <p class="note">リボ払いの手数料は高めです。複数のカードのリボ払いやローンがある場合は、金利の低いローンにまとめると手数料を減らせることがあります → <a href="/shakkin/omatome/">おまとめローン 比較</a></p>
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

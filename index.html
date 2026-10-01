@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>借金返済シミュレーション｜カードローン・消費者金融の完済までの期間と利息の総額</title>
+<meta name="description" content="借入残高・金利・毎月の返済額を入れるだけで、カードローンや消費者金融の借金を完済するまでの期間と、払う利息の総額を計算。何か月で返したいかから毎月の返済額も逆算でき、返済額を増やした場合の効果もわかる無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>借金返済シミュレーション</h1>
+  <p class="lead">カードローンや消費者金融の借入について、<strong>完済までの期間</strong>と<strong>利息の総額</strong>を計算します。何か月で返したいかから、<strong>毎月の返済額</strong>を逆算することもできます。</p>
+
+  <div class="card">
+    <div class="field"><label for="mode">計算のしかた</label>
+      <select id="mode"><option value="monthly">毎月の返済額から、完済までの期間を計算</option><option value="months">返済する期間から、毎月の返済額を計算</option></select></div>
+    <div class="row">
+      <div class="field"><label for="bal">借入残高</label><input type="number" id="bal" min="0" value="50"><div class="hint">万円単位</div></div>
+      <div class="field"><label for="rate">金利（年）</label><input type="number" id="rate" min="0" max="20" step="0.1" value="15"><div class="hint">%。契約書や会員ページで確認できます</div></div>
+    </div>
+    <div class="row">
+      <div class="field" id="fMonthly"><label for="monthly">毎月の返済額</label><input type="number" id="monthly" min="0" value="15000"><div class="hint">円単位</div></div>
+      <div class="field" id="fMonths" hidden><label for="months">返済する期間</label><input type="number" id="months" min="1" max="120" value="36"><div class="hint">か月</div></div>
+    </div>
+    <button id="calc">計算する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>借金返済のよくある質問</h2>
+    <h3>毎月の返済額のうち、どれくらいが利息？</h3>
+    <p>毎月の利息は「残高 × 金利 ÷ 12」が目安です。たとえば残高50万円・金利15%なら、1か月の利息は約6,250円です。返済額が少ないと、返したお金の多くが利息になり、元金がなかなか減りません。</p>
+    <h3>早く返し終えるには？</h3>
+    <p>毎月の返済額を少しでも増やすこと、ボーナスなどで臨時に返す（繰上げ返済）ことが効果的です。金利の低いローンにまとめる（おまとめローン）ことで、利息を減らせる場合もあります。</p>
+    <h3>返済が苦しくなったら？</h3>
+    <p>延滞すると遅延損害金がかかり、信用情報にも記録されます。返済日に間に合わないとわかった時点で、まず借入先に相談しましょう。返済のめどが立たない場合は、弁護士・司法書士に相談すると、債務整理で返済額を減らせることがあります。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>毎月の利息を「残高 × 年利 ÷ 12」として計算した目安です。実際の利息は日割り（年利 ÷ 365 × 日数）で計算されるため、返済日や月の日数によって少し変わります。</footer>
+</div>
+
+<script src="assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+$("mode").addEventListener("change", () => { const m = $("mode").value === "months"; $("fMonthly").hidden = m; $("fMonths").hidden = !m; });
+
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const bal = num("bal") * MAN, rate = num("rate") / 100;
+  if (!bal) { out.innerHTML = '<p class="err">借入残高を入力してください。</p>'; return; }
+  let monthly;
+  if ($("mode").value === "months") monthly = Math.ceil(payment(bal, rate, Math.max(1, Math.floor(num("months")))) / 100) * 100;
+  else monthly = num("monthly");
+  const p = payoff(bal, rate, monthly);
+  if (p.months === Infinity) {
+    out.innerHTML = `<p class="err">毎月の返済額（${yen(monthly)}）が、1か月の利息（約${yen(bal * rate / 12)}）以下のため、借金が減りません。返済額を増やす必要があります。</p>${HELP}`;
+    return;
+  }
+  const plus = [5000, 10000].map(a => ({ a, p: payoff(bal, rate, monthly + a) }));
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat"><div class="k">完済までの期間</div><div class="v">${ym(p.months)}</div></div>
+      <div class="stat warn"><div class="k">利息の総額</div><div class="v">${yen(p.interest)}</div></div>
+      <div class="stat"><div class="k">毎月の返済額</div><div class="v">${yen(monthly)}</div></div>
+    </div>
+    <table class="info">
+      <tr><td>借入残高</td><td class="num">${yen(bal)}</td></tr>
+      <tr><td>返済の総額</td><td class="num">${yen(p.total)}</td></tr>
+      <tr><td>1回目の返済のうち利息</td><td class="num">${yen(bal * rate / 12)}（元金 ${yen(monthly - bal * rate / 12)}）</td></tr>
+    </table>
+    <h2 style="margin-top:16px">毎月の返済額を増やすと</h2>
+    <table class="info"><tr><th>毎月の返済額</th><th class="num">完済までの期間</th><th class="num">利息の総額</th><th class="num">減る利息</th></tr>
+      <tr><td>${yen(monthly)}（今）</td><td class="num">${ym(p.months)}</td><td class="num">${yen(p.interest)}</td><td class="num">—</td></tr>
+      ${plus.map(x => `<tr><td>${yen(monthly + x.a)}（+${yen(x.a)}）</td><td class="num">${ym(x.p.months)}</td><td class="num">${yen(x.p.interest)}</td><td class="num">${yen(p.interest - x.p.interest)}</td></tr>`).join("")}
+    </table>
+    ${rate > 0.1 ? '<p class="note">金利の低いローンに借り換える・まとめると、利息を減らせることがあります → <a href="/shakkin/omatome/">おまとめローン 比較</a></p>' : ""}
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

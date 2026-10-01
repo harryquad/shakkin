@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>過払い金 計算ツール（目安）｜昔の借金でいくら戻る？時効は？引き直し計算</title>
+<meta name="description" content="2010年6月以前に高い金利（グレーゾーン金利）で借りて返していた場合に、利息制限法の上限金利で計算し直す「引き直し計算」で、過払い金の目安を計算。完済から10年の時効のチェックもできる無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/kabarai/">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>過払い金 計算ツール（目安）</h1>
+  <p class="lead">2010年6月より前に、消費者金融やクレジットカードのキャッシングで<strong>高い金利（年20%超）</strong>で借りて返していた場合、払いすぎた利息（過払い金）が戻ってくることがあります。法律の上限金利で計算し直す<strong>「引き直し計算」</strong>で、過払い金の目安を出します。</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="start">借り始めた年月</label><input type="month" id="start" value="2003-04"></div>
+      <div class="field"><label for="end">返し終わった年月（今も返済中なら空欄）</label><input type="month" id="end" value="2010-03"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="amount">借りた金額</label><input type="number" id="amount" min="0" value="50"><div class="hint">万円単位（最初の借入額）</div></div>
+      <div class="field"><label for="rate">当時の金利（年）</label><input type="number" id="rate" min="0" max="40" step="0.1" value="28"><div class="hint">%。2007年以前の消費者金融は25〜29.2%が多い</div></div>
+    </div>
+    <div class="field"><label for="pay">毎月の返済額</label><input type="number" id="pay" min="0" value="15000"><div class="hint">円単位</div></div>
+    <button id="calc">計算する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>過払い金のよくある質問</h2>
+    <h3>過払い金が発生するのはどんな場合？</h3>
+    <p>2010年6月18日より前に、利息制限法の上限（元本10万円未満は年20%、100万円未満は年18%、100万円以上は年15%）を超える金利で借りていた場合です。それ以降の新しい契約は、上限金利以下になっているため、基本的に過払い金は発生しません。</p>
+    <h3>時効はある？</h3>
+    <p>最後に返した日（完済日）から10年がたつと、原則として請求できなくなります。今も返済中の場合や、完済から10年以内なら請求できる可能性があります。</p>
+    <h3>自分で請求できる？</h3>
+    <p>自分で取引履歴を取り寄せて請求することもできますが、正確な引き直し計算や交渉が必要なため、弁護士・司法書士に依頼する人が多いです。取引履歴の取り寄せ（開示請求）は無料でできます。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>1回だけ借りて、毎月同じ額を返した場合の簡易な引き直し計算による目安です。実際の過払い金は、追加の借入や返済日、取引の分断などによって大きく変わるため、正確な金額は取引履歴をもとに専門家に計算してもらう必要があります。過払い金につく利息（年5%）も目安として表示しています。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const [sy, sm] = ($("start").value || "").split("-").map(Number);
+  if (!sy) { out.innerHTML = '<p class="err">借り始めた年月を入力してください。</p>'; return; }
+  const endV = $("end").value;
+  const now = new Date();
+  const [ey, em] = endV ? endV.split("-").map(Number) : [now.getFullYear(), now.getMonth() + 1];
+  const months = Math.max(1, (ey - sy) * 12 + (em - sm));
+  const P = num("amount") * MAN, rate = num("rate") / 100, pay = num("pay");
+  if (!P || !pay) { out.innerHTML = '<p class="err">借りた金額と毎月の返済額を入力してください。</p>'; return; }
+  if (sy > 2010 || (sy === 2010 && sm >= 7)) { out.innerHTML = '<p class="note">2010年6月18日以降の新しい契約は、法律の上限金利以下になっているため、基本的に過払い金は発生しません。</p>'; return; }
+  const legal = legalRate(P);
+  if (rate <= legal) { out.innerHTML = `<p class="note">当時の金利が法律の上限（借入${man(P)}の場合は年${legal * 100}%）以下のため、過払い金は発生しない計算です。</p>`; return; }
+  // 実際の残高（契約金利）と、上限金利で計算し直した残高を並行して計算
+  let actual = P, legalBal = P, over = 0, overInt = 0, paidTotal = 0, m = 0;
+  for (; m < months && actual > 0.5; m++) {
+    const due = actual * (1 + rate / 12);
+    const p = Math.min(pay, due);
+    actual = due - p; paidTotal += p;
+    overInt += over * 0.05 / 12;
+    if (legalBal > 0) { legalBal = legalBal * (1 + legal / 12) - p; if (legalBal < 0) { over += -legalBal; legalBal = 0; } }
+    else over += p;
+  }
+  const finished = actual <= 0.5;
+  const lastY = finished ? sy + Math.floor((sm - 1 + m) / 12) : ey;
+  const lastM = finished ? ((sm - 1 + m) % 12) + 1 : em;
+  const tenYears = new Date(lastY + 10, lastM - 1, 1);
+  const expired = (finished || endV) && tenYears < now;
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat ${over > 0 ? "good" : ""}"><div class="k">過払い金の目安</div><div class="v">${over > 0 ? yen(Math.floor(over / 1000) * 1000) : "発生していない"}</div></div>
+      <div class="stat"><div class="k">過払い利息（年5%）の目安</div><div class="v">${yen(Math.floor(overInt / 1000) * 1000)}</div></div>
+      <div class="stat ${expired ? "warn" : "good"}"><div class="k">時効（最後の返済から10年）</div><div class="v">${expired ? "過ぎている可能性" : `${tenYears.getFullYear()}年${tenYears.getMonth() + 1}月ごろまで`}</div></div>
+    </div>
+    <table class="info">
+      <tr><td>実際に返した総額</td><td class="num">${yen(paidTotal)}</td></tr>
+      <tr><td>上限金利（年${legal * 100}%）で計算し直した場合に返すべきだった額</td><td class="num">${yen(paidTotal - over)}</td></tr>
+      <tr><td>返済期間</td><td class="num">${ym(m)}${finished ? "（完済）" : "（返済中）"}</td></tr>
+    </table>
+    ${!finished && legalBal > 0 ? `<p class="note">上限金利で計算し直すと、残りの借金は約${yen(legalBal)}になり、実際の残高（約${yen(actual)}）より少なくなります。返済中でも、引き直しで借金が減る可能性があります。</p>` : ""}
+    ${expired ? '<p class="note">最後の返済から10年を過ぎていると、原則として請求できません。ただし、同じ会社と取引を続けていた場合など、例外もあるので、専門家に確認してみましょう。</p>' : ""}
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("calc").addEventListener("click", calc);
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>おまとめローン 比較シミュレーション｜複数の借金を1つにまとめると利息はいくら減る？</title>
+<meta name="description" content="カードローン・消費者金融・リボ払いなど、複数の借入の残高・金利・毎月の返済額を入れるだけで、おまとめローンで1つにまとめた場合に利息の総額と完済までの期間がどう変わるかを計算する無料ツールです。">
+<link rel="canonical" href="https://harryquad.github.io/shakkin/omatome/">
+<link rel="stylesheet" href="../assets/style.css">
+<style>.it{grid-template-columns:1.2fr 1fr .8fr 1fr 36px}</style>
+</head>
+<body>
+<header class="site-header"><div><a href="/shakkin/">借金・ローン返済 かんたん計算</a></div></header>
+<div class="wrap">
+  <h1>おまとめローン 比較シミュレーション</h1>
+  <p class="lead">複数の借入を、金利の低いローン1つに<strong>まとめた場合</strong>に、<strong>利息の総額</strong>と<strong>完済までの期間</strong>がどう変わるかを計算します。</p>
+
+  <div class="card">
+    <h2>今の借入</h2>
+    <div id="rows"></div>
+    <div class="btns"><button id="add" class="sub">借入を追加</button><span></span></div>
+    <h2 style="margin-top:16px">おまとめローンの条件</h2>
+    <div class="row">
+      <div class="field"><label for="newRate">おまとめローンの金利（年）</label><input type="number" id="newRate" min="0" max="20" step="0.1" value="12"><div class="hint">%。審査で決まる金利。まずは上限の金利で計算すると安全です</div></div>
+      <div class="field"><label for="newPay">おまとめ後の毎月の返済額</label><input type="number" id="newPay" min="0"><div class="hint">円単位。空欄なら、今の毎月の返済額の合計と同じ</div></div>
+    </div>
+    <button id="calc">比較する</button>
+  </div>
+
+  <div class="card" id="result" hidden></div>
+
+  <div class="ad">広告スペース</div>
+
+  <div class="card faq">
+    <h2>おまとめローンのよくある質問</h2>
+    <h3>おまとめローンのメリットは？</h3>
+    <p>金利が下がれば利息が減り、返済日も1つになって管理しやすくなります。一般的に、借入額が大きくなるほど法律の上限金利が下がる（100万円以上は年15%まで）ため、まとめることで金利が下がりやすくなります。</p>
+    <h3>注意点は？</h3>
+    <p>毎月の返済額を下げすぎると、返済期間が延びて、かえって利息の総額が増えることがあります。また、まとめたあとに、空いたカードローンでまた借りてしまうと借金が増えてしまいます。まとめた借入先は解約するのが安心です。</p>
+    <h3>総量規制（年収の3分の1）があっても借りられる？</h3>
+    <p>消費者金融のおまとめローンは、借りる人に一方的に有利な借り換えとして、総量規制の例外になっています。そのため、年収の3分の1を超える借入があっても申し込める場合があります（審査はあります）。</p>
+  </div>
+
+  <div class="card" id="related"></div>
+
+  <footer>毎月の利息を「残高 × 年利 ÷ 12」として計算した目安です。おまとめローンの金利・手数料は審査や商品によって異なります。</footer>
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function addRow(name = "", bal = "", rate = 18, pay = "") {
+  const el = document.createElement("div");
+  el.className = "it";
+  el.innerHTML = `
+    <div class="nm"><label>借入先</label><input type="text" class="n" placeholder="例：A社カードローン" value="${name}"></div>
+    <div><label>残高（円）</label><input type="number" class="b" min="0" value="${bal}"></div>
+    <div><label>金利（%）</label><input type="number" class="r" min="0" max="20" step="0.1" value="${rate}"></div>
+    <div><label>毎月の返済（円）</label><input type="number" class="p" min="0" value="${pay}"></div>
+    <button type="button" class="rm" aria-label="削除">×</button>`;
+  el.querySelector(".rm").addEventListener("click", () => el.remove());
+  $("rows").appendChild(el);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function calc() {
+  const out = $("result");
+  out.hidden = false;
+  const loans = [...document.querySelectorAll("#rows .it")].map((el, i) => {
+    const g = c => Math.max(0, Number(el.querySelector(c).value) || 0);
+    return { name: el.querySelector(".n").value.trim() || `借入${i + 1}`, bal: g(".b"), rate: g(".r") / 100, pay: g(".p") };
+  }).filter(l => l.bal > 0);
+  if (!loans.length) { out.innerHTML = '<p class="err">借入を1つ以上入力してください。</p>'; return; }
+  const now = loans.map(l => ({ ...l, p: payoff(l.bal, l.rate, l.pay) }));
+  const stuck = now.filter(l => l.p.months === Infinity);
+  if (stuck.length) { out.innerHTML = `<p class="err">${stuck.map(l => esc(l.name)).join("・")}は、毎月の返済額が利息以下のため残高が減りません。毎月の返済額を確認してください。</p>${HELP}`; return; }
+  const total = loans.reduce((s, l) => s + l.bal, 0);
+  const payNow = loans.reduce((s, l) => s + l.pay, 0);
+  const intNow = now.reduce((s, l) => s + l.p.interest, 0);
+  const monthsNow = Math.max(...now.map(l => l.p.months));
+  const newRate = num("newRate") / 100;
+  const newPay = $("newPay").value === "" ? payNow : num("newPay");
+  const after = payoff(total, newRate, newPay);
+  const legal = legalRate(total);
+  if (after.months === Infinity) { out.innerHTML = `<p class="err">おまとめ後の返済額が、1か月の利息以下です。返済額を増やしてください。</p>${HELP}`; return; }
+  const save = intNow - after.interest;
+  out.innerHTML = `
+    <div class="big">
+      <div class="stat ${save > 0 ? "good" : "warn"}"><div class="k">まとめると利息が</div><div class="v">${save > 0 ? yen(save) + "減る" : yen(-save) + "増える"}</div></div>
+      <div class="stat"><div class="k">完済までの期間</div><div class="v">${ym(monthsNow)} → ${ym(after.months)}</div></div>
+      <div class="stat"><div class="k">借入の合計</div><div class="v">${yen(total)}</div></div>
+    </div>
+    <table class="info">
+      <tr><th></th><th class="num">今のまま</th><th class="num">おまとめ後</th></tr>
+      <tr><td>毎月の返済額</td><td class="num">${yen(payNow)}</td><td class="num">${yen(newPay)}</td></tr>
+      <tr><td>利息の総額</td><td class="num">${yen(intNow)}</td><td class="num">${yen(after.interest)}</td></tr>
+      <tr><td>完済までの期間</td><td class="num">${ym(monthsNow)}</td><td class="num">${ym(after.months)}</td></tr>
+    </table>
+    <h2 style="margin-top:14px">今の借入の内訳</h2>
+    <table class="info"><tr><th>借入先</th><th class="num">残高</th><th class="num">金利</th><th class="num">利息の総額</th></tr>
+      ${now.map(l => `<tr><td>${esc(l.name)}</td><td class="num">${yen(l.bal)}</td><td class="num">${(l.rate * 100).toFixed(1)}%</td><td class="num">${yen(l.p.interest)}</td></tr>`).join("")}</table>
+    <p class="note">借入の合計が${man(total)}なので、法律（利息制限法）の上限金利は年${legal * 100}%です。${newRate > legal ? " 入力したおまとめローンの金利は、この上限を超えています。" : ""}${save <= 0 ? " 返済額を下げると期間が延びて、利息の総額が増えることがあります。" : ""}</p>
+    ${HELP}`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("add").addEventListener("click", () => addRow());
+$("calc").addEventListener("click", calc);
+addRow("A社カードローン", 500000, 18, 15000);
+addRow("B社カードローン", 300000, 18, 10000);
+addRow("クレジットカードのリボ払い", 200000, 15, 8000);
+</script>
+</body>
+</html>
